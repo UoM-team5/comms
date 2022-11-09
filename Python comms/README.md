@@ -14,7 +14,7 @@ Set of functions that may be called from the UI.
 | `FLUSH_PORT(DEV)` | terminate communiaction | |
 
 #### example code of a function: 
-```
+```python
 def ID_PORTS_AVAILABLE():
     devices = []
     for port in ['COM%s' % (i + 1) for i in range(256)]:
