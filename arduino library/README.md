@@ -18,17 +18,23 @@ Each part of the command is delineated with a space character to make them easie
 
 The received packets are of similar format to that of the sent packet however with a few more additional operators such as __ACK__, __BUSY__ and __ERR___. All of these packets are sent as a reply to a request from the main python script and are only sent as such, there will be no constant writing to the serial lines as this will fill the python buffer. When the Arduino is busy with other operations it will only ever respond with a ACK or BUSY which will be driven by a timer interrupt 40ms after the receiving of a packet. If the Arduino is BUSY it will ignore the latest packet sent and simply reply with a BUSY.
 
-The only time when the Arduino is proactively send a message to the python is when the device encounters an error, then the device will send an error message to the python for it to handle and deal with.
+The only time when the Arduino is proactively send a message to the python is when the device encounters an error, then the device will send an error message to the python for it to handle and deal with or when the system is free to receive the next command.
 
 ![comms1](https://user-images.githubusercontent.com/78451671/200846973-452f3ce9-af27-4bbf-b198-fa694cbc40d3.png)
 
 ### __Other Packets__:
+
+```
 
 •	[sID1001 rID1000 PK1 ACK]
 
 •	[sID1001 rID1000 PK1 BUSY]
 
 •	[sID1001 rID1000 PK1 ERR0]
+
+•	[sID1001 rID1000 PK1 FREE]
+
+```
 
   | __ERROR NUMBER__ |	__FAULT__ | 
   | :------------: | -------- | 
@@ -37,6 +43,7 @@ The only time when the Arduino is proactively send a message to the python is wh
   | ERR2	| Incorrect Device ID | 
   | ERR3	| Incorrect Sender ID | 
   | ERR4	| System is in error state. | 
+  
 
 ## Command Operators:
 
@@ -47,6 +54,7 @@ The only time when the Arduino is proactively send a message to the python is wh
 | PK_ |	Packet size of the number of command operators, not length |
 | ACK |	Acknowledgement response |
 | BUSY |	Busy response when the device is in operation |
+| FREE |	Send a message to the python handler that it has finished all processes |
 | ERR_ |	Error message based on the devices state |
 | R |	Read sensor operator, sent by the python to indicate the reading of all the sensors, all sent back as a packet as shown above. |
 | P_ |	Pump operator followed by the number of the pump |
