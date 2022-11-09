@@ -1,71 +1,60 @@
 #include "ARCaDIUS_Serial.h"
+#include <TimerOne.h>
 
+String DeviceDesc = "This is an example string";
 int Device_ID = 1001;
 int Sender_ID = 1000;
+int Num_of_Pumps = 1;
+int Num_of_Valves = 1;
+int Num_of_Shutter = 1;
+int Num_of_Temp = 1;
+int Num_of_Bubble = 1;
+int Num_of_Mixer = 1;
 
-int SerialrID = 0;
-int SerialsID = 0;
-int PK_Size = 0;
-String Command = "NaN";
-bool isWaiting = true;
-bool busy = false;
+ASerial Test(DeviceDesc, Device_ID, Sender_ID, Num_of_Pumps, Num_of_Valves, Num_of_Shutter, Num_of_Temp, Num_of_Bubble, Num_of_Mixer);
 
-String rID = "NaN";
-String sID = "NaN";
-String rPK_Size = "NaN";
-
+bool run_1 = false;
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  attachInterrupt(digitalPinToInterrupt(2), serialInterrupt, FALLING);
+  Timer1.initialize(30000);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if (!isWaiting) {
-    Serial.print("The received packet: ");
-    Serial.println(sID + ' '+ rID + ' ' + rPK_Size + ' ' + Command + ']');
-    Serial.print("The decoded sender ID is: ");
-    Serial.println(SerialsID);
-    Serial.print("The decoded receiver ID is: ");
-    Serial.println(SerialrID);
-    Serial.print("The decoded Packet Size is: ");
-    Serial.println(PK_Size);
-    Serial.print("The decoded Command is: ");
-    Serial.println(Command);
-    Serial.println();
-    isWaiting = true;
+  if (Test.GotCommand()) {
+    delay(10000);
+    Test.process();
+    Test.print2Serial();
+    Test.SetState(true);
+    Test.SetCommand(false);
+    run_1 = false;
   }
-  delay(100);
 }
 
-void serialEvent() {
-  while (Serial.available()) {
-    sID = Serial.readStringUntil(' ');
-    if (sID[0] == '[') {
-      SerialsID = ChecksID(sID,Sender_ID);
-      rID = Serial.readStringUntil(' ');
-      SerialrID = CheckrID(rID,Device_ID);
-      rPK_Size = Serial.readStringUntil(' ');
-      PK_Size = getPKSize(rPK_Size);
-      Command = Serial.readStringUntil(']');
-      if(SerialsID != -1 && SerialrID != -1){
-        if(busy){
-          Serial.println("[sID1001 rID1000 PK1 BUSY]");
-        }
-        else{
-          Serial.println("[sID1001 rID1000 PK1 ACK]");
-        }
-      }
-      Serial.flush();
-      isWaiting = false;
-      serialFlush();
-      break;
-    }
-    else {
-      Error(0);
-      serialFlush();
-      break;
-    }
+void serialInterrupt() {
+  detachInterrupt(digitalPinToInterrupt(2));
+  noInterrupts();
+  Test.SerialLoop();
+  interrupts();
+  Timer1.attachInterrupt(reattach);
+}
+
+void reattach() {
+  attachInterrupt(digitalPinToInterrupt(2), serialInterrupt, FALLING);
+  Timer1.detachInterrupt();
+  if (!run_1) {
+    run_1 = !run_1;
+    Serial.println("[sID1001 rID1000 PK1 ACK]");
   }
+  else if(!Test.GetState()){
+    Serial.println("[sID1001 rID1000 PK1 BUSY]");
+  }
+  else {
+    Serial.println("[sID1001 rID1000 PK1 ACK]");
+    Test.SetState(false);
+  }
+  Test.SetCommand(true);
 }
