@@ -10,6 +10,8 @@ The communications is done on the low lever between the python and Arduino sub m
 
 Packet sent from the python script to each Arduino. It consists to 4 main elements, the sender ID, the receiver ID, packet size and then a single command. The packet size is used to determine the length of the command. 
 
+![comms](https://user-images.githubusercontent.com/78451671/200846901-ec4742d7-5fc5-411e-bc36-9bb239b59c6f.png)
+
 Each part of the command is delineated with a space character to make them easier to read as well as easier to decode on the Arduino hardware.
 
 ### __Received__:
@@ -17,6 +19,8 @@ Each part of the command is delineated with a space character to make them easie
 The received packets are of similar format to that of the sent packet however with a few more additional operators such as __ACK__, __BUSY__ and __ERR___. All of these packets are sent as a reply to a request from the main python script and are only sent as such, there will be no constant writing to the serial lines as this will fill the python buffer. When the Arduino is busy with other operations it will only ever respond with a ACK or BUSY which will be driven by a timer interrupt 40ms after the receiving of a packet. If the Arduino is BUSY it will ignore the latest packet sent and simply reply with a BUSY.
 
 The only time when the Arduino is proactively send a message to the python is when the device encounters an error, then the device will send an error message to the python for it to handle and deal with.
+
+![comms1](https://user-images.githubusercontent.com/78451671/200846973-452f3ce9-af27-4bbf-b198-fa694cbc40d3.png)
 
 ### __Other Packets__:
 
