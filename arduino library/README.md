@@ -1,4 +1,4 @@
-# Communication “Protocol”
+# Communication Standard
 
 
 
