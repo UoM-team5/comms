@@ -2,9 +2,17 @@
 #define ARCaDIUS_Serial_H
 
 #include <Arduino.h>
+#include <TimerOne.h>
 
 struct DeviceInfo {
   int test;
+};
+
+enum operation {
+  PUMP,
+  SHUTTER,
+  VALVE,
+  MIXER
 };
 
 
@@ -27,6 +35,8 @@ class ASerial {
 
     int Device_ID;
     int Sender_ID;
+    String sACK;
+    String sBUSY;
     String DeviceDescription;
 
     int NumPump;
@@ -35,13 +45,38 @@ class ASerial {
     int NumTemp;
     int NumBubble;
     int NumMixer;
+    int intPin;
 
+    enum operation op;
+
+    int pump;
+    float pumpValue;
+    int pumpDir;
+
+    int valve;
+    int valveState;
+
+    int mixer;
+    float mixerSpeed;
+    bool mixerDir;
+
+    int shutter;
+    float shutterPos;
+
+    void Pump();
+    void Mixer();
+    void Valve();
+    void Shutter();
+    void readSensors();
+    void updateSensors();
+
+    static ASerial * instance0_;
 
     int SerialrID;
     int SerialsID;
     int PK_Size = 0;
     String Command = "NaN";
-    bool isWaiting = true;
+    bool isWaiting;
     bool CMD = false;
 
     String rID = "NaN";
@@ -49,15 +84,19 @@ class ASerial {
     String rPK_Size = "NaN";
 
     String Data;
-    
-  public:
-    ASerial(String DeviceDesc, int rID, int sID, int NumPump, int NumValve, int NumIrr, int NumTemp, int NumBubble, int NumMixer);
 
-    void print2Serial();
-
+    static void serialInterrupt();
+    static void reattach();
     void SerialLoop();
 
     void process();
+    void analyse();
+
+  public:
+    ASerial(String DeviceDesc, int rID, int sID, int NumPump, int NumValve, int NumIrr, int NumTemp, int NumBubble, int NumMixer, int intPin);
+
+    void print2Serial();
+    void FinishedCommand();
 
     void SetState(bool s);
     bool GetState();
@@ -72,9 +111,30 @@ class ASerial {
 
     int GetPKSize();
 
-    String GetCommand();
-    String GetData(){return Data;}
-    bool GotCommand(){return CMD;}
-    void SetCommand(bool v){CMD = v;}
+    int GetCommand();
+    String GetData() {
+      return Data;
+    }
+    bool GotCommand() {
+      delay(1000);
+      return CMD;
+    }
+    void SetCommand(bool v) {
+      CMD = v;
+    }
+
+    int getPump();
+    float getPumpMls();
+    bool getPumpDir();
+
+    int getValve();
+    bool getValveState();
+
+    int getMixer();
+    float getMixerSpeed();
+    bool getMixerDir();
+    
+    int getShutter();
+    float getShutterPos();
 };
 #endif

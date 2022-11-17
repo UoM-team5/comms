@@ -1,21 +1,32 @@
 #include "ARCaDIUS_Serial.h"
+#include <TimerOne.h>
 
 
-ASerial::ASerial(String DeviceDesc, int rID, int sID, int NumPump, int NumValve, int NumIrr, int NumTemp, int NumBubble, int NumMixer) {
+ASerial::ASerial(String DeviceDesc, int rID, int sID, int NumPump, int NumValve, int NumIrr, int NumTemp, int NumBubble, int NumMixer, int intPin) {
   DeviceDesc = DeviceDesc;
   Device_ID = rID;
   Sender_ID = sID;
+  sACK = "[sID" + (String)rID + " rID" + (String)sID + " PK1 ACK]";
+  sBUSY = "[sID" + (String)rID + " rID" + (String)sID + " PK1 BUSY]";
   NumPump = NumPump;
   NumValve = NumValve;
   NumIrr = NumIrr;
   NumTemp = NumTemp;
   NumBubble = NumBubble;
   NumMixer = NumMixer;
+  isWaiting = true;
+  instance0_ = this;
+  attachInterrupt(digitalPinToInterrupt(intPin), serialInterrupt, FALLING);
+  Timer1.initialize(300000);
 }
 
+ASerial * ASerial::instance0_;
+
 void ASerial::serialFlush() {
-  while (Serial.available() > 0) {
+  int i = 0;
+  while (Serial.available() > 0 && i < 500) {
     char t = Serial.read();
+    i++;
   }
 }
 int ASerial::CheckrID(String rID, int Device_ID) {
@@ -56,19 +67,12 @@ int ASerial::getPKSize(String rPK_Size) {
   return PK_Size;
 }
 void ASerial::Error(int code) {
-  Serial.println("[sID1001 rID1000 PK1 ERR" + (String)code + "]");
+  Serial.println("[sID" + (String)Device_ID + " rID" + (String)Sender_ID + " PK1 ERR" + (String)code + "]");
 }
 
-void ASerial::SerialLoop() {
-  if (!isWaiting) {
-  }
-  else {
-    isWaiting = false;
-  }
-}
 
 void ASerial::process() {
-  while (Serial.available()) {
+  if (Serial.available() > 0) {
     sID = Serial.readStringUntil(' ');
     if (sID[0] == '[') {
       //Serial.println(sID);
@@ -80,16 +84,117 @@ void ASerial::process() {
       //Serial.println(rPK_Size);
       PK_Size = getPKSize(rPK_Size);
       Command = Serial.readStringUntil(']');
+      //Serial.println(Command);
+      Data = Command;
       Serial.flush();
       serialFlush();
-      break;
     }
     else {
       Error(0);
       serialFlush();
-      break;
     }
   }
+}
+
+void ASerial::analyse() {
+  switch (Command[0]) {
+    case 'P':
+      op = PUMP;
+      Pump();
+      break;
+    case 'M':
+      op = MIXER;
+      Mixer();
+      break;
+    case 'V':
+      op = VALVE;
+      Valve();
+      break;
+    case 'I':
+      op = SHUTTER;
+      Shutter();
+      break;
+    case 'R':
+      readSensors();
+      break;
+    default:
+      break;
+  }
+}
+
+String readStringuntil(String s, char c) {
+  int i = 0;
+  String r = "";
+  //Serial.println(sizeof(s));
+
+  while (i < s.length()) {
+    if (s[i - 1] == c) {
+      //Serial.print(r);
+      return r;
+    }
+    else {
+      r = r + s[i];
+      //Serial.println(r[i]);
+    }
+    i++;
+  }
+  return r;
+}
+
+void ASerial::Pump() {
+  String rubbish;
+  pump = Command[1] - '0';
+  //Serial.println(pump);
+  rubbish = readStringuntil(Command, 'm');
+  Command.remove(0, rubbish.length());
+  pumpValue = readStringuntil(Command, ' ').toFloat();
+  //Serial.println(pumpValue);
+  rubbish = readStringuntil(Command, 'D');
+  Command.remove(0, rubbish.length());
+  pumpDir = Command[0] - '0';
+  //Serial.println(pumpDir);
+}
+
+void ASerial::Valve() {
+  String rubbish;
+  valve = Command[1] - '0';
+  //Serial.println(valve);
+  rubbish = readStringuntil(Command, 'S');
+  Command.remove(0, rubbish.length());
+  valveState = Command[0] - '0';
+  //Serial.println(valveState);
+}
+
+void ASerial::Mixer() {
+  String rubbish;
+  mixer = Command[1] - '0';
+  //Serial.println(mixer);
+  rubbish = readStringuntil(Command, 'S');
+  Command.remove(0, rubbish.length());
+  mixerSpeed = readStringuntil(Command, ' ').toFloat();
+  //Serial.println(mixerSpeed);
+  rubbish = readStringuntil(Command, 'D');
+  Command.remove(0, rubbish.length());
+  mixerDir = Command[0] - '0';
+  //Serial.println(mixerDir);
+}
+
+void ASerial::Shutter() {
+  String rubbish;
+  shutter = Command[1] - '0';
+  //Serial.println(shutter);
+  rubbish = readStringuntil(Command, 'S');
+  Command.remove(0, rubbish.length());
+  shutterPos = readStringuntil(Command, ' ').toFloat();
+  //Serial.println(shutterPos);
+}
+
+void ASerial::readSensors() {
+
+}
+
+void ASerial::updateSensors() {
+
 }
 
 void ASerial::print2Serial() {
@@ -100,7 +205,7 @@ void ASerial::print2Serial() {
   Serial.print("The decoded Packet Size is: ");
   Serial.println((String)GetPKSize());
   Serial.print("The decoded Command is: ");
-  Serial.println((String)GetCommand());
+  Serial.println((String)GetData());
   Serial.println();
 }
 bool ASerial::GetState() {
@@ -130,6 +235,71 @@ int ASerial::GetSerialrID() {
 int ASerial::GetPKSize() {
   return PK_Size;
 }
-String ASerial::GetCommand() {
-  return Command;
+int ASerial::getPump(){
+  return pump;
+}
+float ASerial::getPumpMls(){
+  return pumpValue;
+}
+bool ASerial::getPumpDir(){
+  return pumpDir;
+}
+int ASerial::getValve(){
+  return valve;
+}
+bool ASerial::getValveState(){
+  return valveState;
+}
+int ASerial::getMixer(){
+  return mixer;
+}
+float ASerial::getMixerSpeed(){
+  return mixerSpeed;
+}
+bool ASerial::getMixerDir(){
+  return mixerDir;
+}
+int ASerial::getShutter(){
+  return shutter;
+}
+float ASerial::getShutterPos(){
+  return shutterPos;
+}
+int ASerial::GetCommand() {
+  process();
+  analyse();
+  return op;
+}
+
+void ASerial::FinishedCommand() {
+  isWaiting = true;
+  CMD = false;
+  Serial.println("[sID" + (String)Device_ID + " rID" + (String)Sender_ID + " PK1 FREE]");
+}
+
+void ASerial::serialInterrupt() {
+  detachInterrupt(digitalPinToInterrupt(instance0_->intPin));
+  //noInterrupts();
+  if (instance0_->isWaiting) {
+    instance0_->isWaiting = false;
+  }
+  //interrupts();
+  Timer1.attachInterrupt(reattach);
+}
+
+void ASerial::reattach() {
+  attachInterrupt(digitalPinToInterrupt(instance0_->intPin), serialInterrupt, FALLING);
+  Timer1.detachInterrupt();
+  //noInterrupts();
+  if (instance0_->CMD == false) {
+    instance0_->CMD = !instance0_->CMD;
+    Serial.println(instance0_->sACK);
+    //Serial.println("[sID1001 rID1000 PK1 ACK]");
+  }
+  else if (instance0_->isWaiting == false) {
+    //Serial.println("[sID1001 rID1000 PK1 BUSY]");
+    Serial.println(instance0_->sBUSY);
+  }
+  //interrupts();
+  //instance0_->SetCommand(true);
 }
