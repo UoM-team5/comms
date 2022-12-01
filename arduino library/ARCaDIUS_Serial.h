@@ -12,7 +12,8 @@ enum operation {
   PUMP,
   SHUTTER,
   VALVE,
-  MIXER
+  MIXER,
+  DETAIL,
 };
 
 
@@ -30,14 +31,13 @@ class ASerial {
     //Calculates the command packet size from the serial comms.
     int getPKSize(String rPK_Size);
 
-    //Error handler
-    void Error(int code);
-
+    void ReturnDetails();
+    
     int Device_ID;
     int Sender_ID;
     String sACK;
     String sBUSY;
-    String DeviceDescription;
+    String DeviceDesc;
 
     int NumPump;
     int NumValve;
@@ -46,6 +46,7 @@ class ASerial {
     int NumBubble;
     int NumMixer;
     int intPin;
+    int ResPin;
 
     enum operation op;
 
@@ -89,11 +90,16 @@ class ASerial {
     static void reattach();
     void SerialLoop();
 
-    void process();
+    int process();
     void analyse();
 
   public:
-    ASerial(String DeviceDesc, int rID, int sID, int NumPump, int NumValve, int NumIrr, int NumTemp, int NumBubble, int NumMixer, int intPin);
+    ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B, int M, int intPin, int Res);
+
+    //Error handler
+    void Error(int code);
+
+    void Start();
 
     void print2Serial();
     void FinishedCommand();

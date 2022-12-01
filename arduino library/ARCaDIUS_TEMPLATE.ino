@@ -4,20 +4,20 @@ String DeviceDesc = "This is an example string";
 int Device_ID = 1001;
 int Sender_ID = 1000;
 int Num_of_Pumps = 1;
-int Num_of_Valves = 1;
-int Num_of_Shutter = 1;
-int Num_of_Temp = 1;
-int Num_of_Bubble = 1;
-int Num_of_Mixer = 1;
+int Num_of_Valves = 2;
+int Num_of_Shutter = 3;
+int Num_of_Temp = 4;
+int Num_of_Bubble = 5;
+int Num_of_Mixer = 6;
 int intPin = 2;
 
-ASerial Device(DeviceDesc, Device_ID, Sender_ID, Num_of_Pumps, Num_of_Valves, Num_of_Shutter, Num_of_Temp, Num_of_Bubble, Num_of_Mixer, intPin);
+ASerial Device(DeviceDesc, Device_ID, Sender_ID, Num_of_Pumps, Num_of_Valves, Num_of_Shutter, Num_of_Temp, Num_of_Bubble, Num_of_Mixer, intPin, 3);
 
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
   Serial.setTimeout(1000);
-  Device.FinishedCommand();
+  Device.Start();
 }
 
 void loop() {
@@ -45,6 +45,7 @@ void loop() {
       default: // Leave this, its just the default
         break;
     }
+    delay(10000);
     Device.FinishedCommand();
   }
 }
