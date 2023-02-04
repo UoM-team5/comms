@@ -110,6 +110,7 @@ void ASerial::Error(int code) {
 
 bool ASerial::GotCommand(){
   if(Serial.available()>0){
+    Serial.println(instance0_->sACK);
     if (Serial.peek() == 'K') {
       Serial.println("KILL");
       digitalWrite(instance0_->ResPin, LOW);
