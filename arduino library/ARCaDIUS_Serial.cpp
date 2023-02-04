@@ -1,10 +1,10 @@
 #include "ARCaDIUS_Serial.h"
 #include <TimerOne.h>
 
-ASerial::ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B, int M, int intPin, int Res) {
+ASerial::ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B, int M, int Res) {
   ResPin = Res;
-  digitalWrite(ResPin,HIGH);
-  pinMode(ResPin,OUTPUT);
+  digitalWrite(ResPin, HIGH);
+  pinMode(ResPin, OUTPUT);
   DeviceDesc = DD;
   Device_ID = rID;
   Sender_ID = sID;
@@ -18,20 +18,28 @@ ASerial::ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B,
   NumMixer = M;
   isWaiting = true;
   instance0_ = this;
-  attachInterrupt(digitalPinToInterrupt(intPin), serialInterrupt, FALLING);
-  Timer1.initialize(300000);
+  TempVal = new float[NumTemp];
+  BubbleVal = new float[NumBubble];
+  //attachInterrupt(digitalPinToInterrupt(intPin), serialInterrupt, FALLING);
+  //Timer1.initialize(300000);
+  for (int i = 0; i < NumTemp; i++) {
+    TempVal[i] = 0;
+  }
+  for (int i = 0; i < NumBubble; i++) {
+    BubbleVal[i] = 0;
+  }
 }
 
 ASerial * ASerial::instance0_;
 
 void ASerial::Start() {
-  while (!GotCommand()) {}
-  if (GetCommand() != DETAIL) {
-    Error(5);
-//    while(1){
-//      int R = GetCommand();
-//    }
-  }
+  //  while (!GotCommand()) {}
+  //  if (GetCommand() != DETAIL) {
+  //    Error(5);
+  //    while(1){
+  //      int R = GetCommand();
+  //    }
+  //  }
   FinishedCommand();
 }
 
@@ -100,6 +108,18 @@ void ASerial::Error(int code) {
   Serial.println("[sID" + (String)Device_ID + " rID" + (String)Sender_ID + " PK1 ERR" + (String)code + "]");
 }
 
+bool ASerial::GotCommand(){
+  if(Serial.available()>0){
+    if (Serial.peek() == 'K') {
+      Serial.println("KILL");
+      digitalWrite(instance0_->ResPin, LOW);
+    }
+    return true;
+  }
+  else{
+    return false;
+  }
+}
 
 int ASerial::process() {
   if (Serial.available() > 0) {
@@ -193,7 +213,13 @@ void ASerial::Pump() {
   //Serial.println(pumpValue);
   rubbish = readStringuntil(Command, 'D');
   Command.remove(0, rubbish.length());
-  pumpDir = Command[0] - '0';
+  if (pumpValue > 0) {
+    pumpDir = 1;
+  }
+  else {
+    pumpDir = 0;
+  }
+  //pumpDir = Command[0] - '0';
   //Serial.println(pumpDir);
 }
 
@@ -232,11 +258,29 @@ void ASerial::Shutter() {
 }
 
 void ASerial::readSensors() {
-
+  int PK_size = (NumBubble + NumTemp) * 2;
+  String SenVal = "[sID" + (String)Device_ID + " rID" + (String)Sender_ID + " PK" + (String)PK_size + " SEN";
+  for (int i = 0; i < NumTemp; i++) {
+    SenVal = SenVal + " T" + (String)(i + 1) + " S" + (String)TempVal[i];
+  }
+  for (int i = 0; i < NumBubble; i++) {
+    SenVal = SenVal + " B" + (String)(i + 1) + " S" + (String)BubbleVal[i];
+  }
+  SenVal = SenVal + "]";
+  Serial.println(SenVal);
 }
 
-void ASerial::updateSensors() {
-
+void ASerial::updateSensors(SENSOR s, int Num, float Val) {
+  switch (s) {
+    case TEMP:
+      TempVal[Num-1] = Val;
+      break;
+    case BUBBLE:
+      BubbleVal[Num-1] = Val;
+      break;
+    default:
+      break;
+  }
 }
 
 void ASerial::print2Serial() {
@@ -287,7 +331,7 @@ bool ASerial::getPumpDir() {
   return pumpDir;
 }
 int ASerial::getValve() {
-  return valve;
+  return (int)valve;
 }
 bool ASerial::getValveState() {
   return valveState;
@@ -309,6 +353,7 @@ float ASerial::getShutterPos() {
 }
 int ASerial::GetCommand() {
   int S = process();
+  serialFlush();
   if (S == 1) {
     analyse();
     return op;
@@ -320,36 +365,37 @@ void ASerial::FinishedCommand() {
   isWaiting = true;
   CMD = false;
   Serial.println("[sID" + (String)Device_ID + " rID" + (String)Sender_ID + " PK1 FREE]");
+  serialFlush();
 }
 
-void ASerial::serialInterrupt() {
-  detachInterrupt(digitalPinToInterrupt(instance0_->intPin));
-  //noInterrupts();
-  if (instance0_->isWaiting) {
-    instance0_->isWaiting = false;
-  }
-  //interrupts();
-  Timer1.attachInterrupt(reattach);
-}
+//void ASerial::serialInterrupt() {
+//  detachInterrupt(digitalPinToInterrupt(instance0_->intPin));
+//  //noInterrupts();
+//  if (instance0_->isWaiting) {
+//    instance0_->isWaiting = false;
+//  }
+//  //interrupts();
+//  Timer1.attachInterrupt(reattach);
+//}
 
-void ASerial::reattach() {
-  attachInterrupt(digitalPinToInterrupt(instance0_->intPin), serialInterrupt, FALLING);
-  Timer1.detachInterrupt();
-  //noInterrupts();
-  if (Serial.peek() == 'K') {
-    Serial.println("KILL");
-    digitalWrite(instance0_->ResPin, LOW);
-  }
-  if (instance0_->CMD == false) {
-    instance0_->CMD = !instance0_->CMD;
-    Serial.println(instance0_->sACK);
-    //Serial.println("[sID1001 rID1000 PK1 ACK]");
-  }
-  else if (instance0_->isWaiting == false) {
-    //Serial.println("[sID1001 rID1000 PK1 BUSY]");
-    Serial.println(instance0_->sBUSY);
-  }
-
-  //interrupts();
-  //instance0_->SetCommand(true);
-}
+//void ASerial::reattach() {
+//  attachInterrupt(digitalPinToInterrupt(instance0_->intPin), serialInterrupt, FALLING);
+//  Timer1.detachInterrupt();
+//  //noInterrupts();
+//  if (Serial.peek() == 'K') {
+//    Serial.println("KILL");
+//    digitalWrite(instance0_->ResPin, LOW);
+//  }
+//  if (instance0_->CMD == false) {
+//    instance0_->CMD = !instance0_->CMD;
+//    Serial.println(instance0_->sACK);
+//    //Serial.println("[sID1001 rID1000 PK1 ACK]");
+//  }
+//  else if (instance0_->isWaiting == false) {
+//    //Serial.println("[sID1001 rID1000 PK1 BUSY]");
+//    Serial.println(instance0_->sBUSY);
+//  }
+//
+//  //interrupts();
+//  //instance0_->SetCommand(true);
+//}

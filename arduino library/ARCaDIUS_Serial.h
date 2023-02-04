@@ -4,16 +4,18 @@
 #include <Arduino.h>
 #include <TimerOne.h>
 
-struct DeviceInfo {
-  int test;
-};
-
 enum operation {
   PUMP,
   SHUTTER,
   VALVE,
   MIXER,
   DETAIL,
+};
+
+enum SENSOR {
+  TEMP,
+  BUBBLE,
+  LIQLEVEL,
 };
 
 
@@ -32,7 +34,7 @@ class ASerial {
     int getPKSize(String rPK_Size);
 
     void ReturnDetails();
-    
+
     int Device_ID;
     int Sender_ID;
     String sACK;
@@ -48,7 +50,11 @@ class ASerial {
     int intPin;
     int ResPin;
 
+    float* TempVal;
+    float* BubbleVal;
+
     enum operation op;
+    enum SENSOR Sensor;
 
     int pump;
     float pumpValue;
@@ -68,8 +74,8 @@ class ASerial {
     void Mixer();
     void Valve();
     void Shutter();
+
     void readSensors();
-    void updateSensors();
 
     static ASerial * instance0_;
 
@@ -94,10 +100,12 @@ class ASerial {
     void analyse();
 
   public:
-    ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B, int M, int intPin, int Res);
+    ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B, int M, int Res);
 
     //Error handler
     void Error(int code);
+
+    void updateSensors(SENSOR s, int Num, float Val);
 
     void Start();
 
@@ -121,10 +129,7 @@ class ASerial {
     String GetData() {
       return Data;
     }
-    bool GotCommand() {
-      delay(1000);
-      return CMD;
-    }
+    bool GotCommand();
     void SetCommand(bool v) {
       CMD = v;
     }
@@ -139,7 +144,7 @@ class ASerial {
     int getMixer();
     float getMixerSpeed();
     bool getMixerDir();
-    
+
     int getShutter();
     float getShutterPos();
 };
