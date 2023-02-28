@@ -2,7 +2,7 @@
 #define ARCaDIUS_Serial_H
 
 #include <Arduino.h>
-#include <TimerOne.h>
+
 
 enum operation {
   PUMP,
