@@ -1,5 +1,5 @@
 #include "ARCaDIUS_Serial.h"
-#include <TimerOne.h>
+
 
 ASerial::ASerial(String DD, int rID, int sID, int P, int V, int I, int T, int B, int M, int Res) {
   ResPin = Res;
